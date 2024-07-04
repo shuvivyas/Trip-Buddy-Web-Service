@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TripBuddy</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        header {
+            background-color: #003366;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            margin: 0;
+        }
+        form {
+            background-color: #fff;
+            padding: 20px;
+            max-width: 400px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: calc(100% - 12px);
+            padding: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button[type="submit"]:hover {
+            background-color: #45a049;
+        }
+        .response-container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #f0f0f0;
+        }
+        .error-message {
+            color: #FF0000;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .weather-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .weather-icon {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+        }
+        .travel-images-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        .travel-image {
+            max-width: 150px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>TripBuddy</h1>
+    </header>
+    <form id="tripForm">
+        <label for="source">From:</label>
+        <input type="text" id="source" name="source" required><br>
+
+        <label for="destination">To:</label>
+        <input type="text" id="destination" name="destination" required><br>
+
+        <button type="submit">Let's Go</button>
+    </form>
+    <div class="response-container" id="response"></div>
+    <div class="error-message" id="errorMessage"></div>
+
+    <script>
+        const form = document.querySelector('#tripForm');
+        const responseDiv = document.querySelector('#response');
+        const errorMessageDiv = document.querySelector('#errorMessage');
+        const timeZoneAPIKey = "U199ENV7J6RT"; // Your TimezoneDB API key
+        const weatherAPIKey = "e3c538e4ce3f61c86e2f85aab4a8cc25"; // Your OpenWeather API key
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const source = form.elements.source.value;
+            const destination = form.elements.destination.value;
+
+            try {
+                // Reset error message
+                errorMessageDiv.textContent = '';
+
+                // Fetch timezone data
+                const timeZoneResponse = await fetch(`http://api.timezonedb.com/v2.1/get-time-zone?key=${timeZoneAPIKey}&format=json&by=position&lat=0&lng=0`);
+                if (!timeZoneResponse.ok) {
+                    throw new Error('Failed to fetch time zone data');
+                }
+                const timeZoneData = await timeZoneResponse.json();
+
+                // Check if time zone data contains valid offset
+                if (!timeZoneData || !timeZoneData.gmtOffset) {
+                    throw new Error('Invalid time zone data');
+                }
+
+                // Get the time zone difference
+                const timeZoneDifference = timeZoneData.gmtOffset / 3600;
+
+                // Fetch weather data for source city
+                const sourceWeatherResponse = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${source}&appid=${weatherAPIKey}`);
+                if (!sourceWeatherResponse.ok) {
+                    throw new Error('Failed to fetch weather data for source city');
+                }
+                const sourceWeatherData = await sourceWeatherResponse.json();
+
+                // Fetch weather data for destination city
+                const destinationWeatherResponse = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${destination}&appid=${weatherAPIKey}`);
+                if (!destinationWeatherResponse.ok) {
+                    throw new Error('Failed to fetch weather data for destination city');
+                }
+                const destinationWeatherData = await destinationWeatherResponse.json();
+
+                // Check if weather data contains valid information
+                if (!sourceWeatherData || !destinationWeatherData ||
+                    !sourceWeatherData.weather || !destinationWeatherData.weather ||
+                    sourceWeatherData.weather.length === 0 || destinationWeatherData.weather.length === 0) {
+                    throw new Error('Invalid weather data');
+                }
+
+                // Construct response HTML
+                const response = `
+                    <h3>Trip Information</h3>
+                    <p>Source Weather: <img src="https://openweathermap.org/img/wn/${sourceWeatherData.weather[0].icon}.png" alt="${sourceWeatherData.weather[0].description}" class="weather-icon">${sourceWeatherData.weather[0].description}</p>
+                    <p>Destination Weather: <img src="https://openweathermap.org/img/wn/${destinationWeatherData.weather[0].icon}.png" alt="${destinationWeatherData.weather[0].description}" class="weather-icon">${destinationWeatherData.weather[0].description}</p>
+                    <p>Time Zone Difference: ${timeZoneDifference} hours</p>
+                    <img src="https://image.flaticon.com/icons/png/512/2990/2990549.png" alt="Travel" class="travel-image">
+                    <img src="https://image.flaticon.com/icons/png/512/147/147144.png" alt="Person" class="person-image">
+                `;
+                responseDiv.innerHTML = response;
+
+            } catch (error) {
+                console.error('Error:', error);
+                errorMessageDiv.textContent = `An error occurred: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
